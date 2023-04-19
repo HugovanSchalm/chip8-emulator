@@ -12,6 +12,9 @@ Cargo.lock
 # VsCode stuff
 /.vscode
 
+# chip-8 roms
+*.ch8
+
 
 # Added by cargo
 
