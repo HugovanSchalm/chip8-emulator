@@ -15,6 +15,8 @@ Cargo.lock
 # chip-8 roms
 *.ch8
 
+/roms
+
 
 # Added by cargo
 

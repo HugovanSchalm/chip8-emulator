@@ -6,13 +6,13 @@ pub const DISPLAY_HEIGHT: usize = 32;
 const ON_COLOR: u32 = 0x00FF00; // Green
 const OFF_COLOR: u32 = 0x0; // Black
 
-pub struct Display {
+pub struct IO {
     window: Window,
 }
 
-impl Display {
-    pub fn new() -> Display {
-        let window = Window::new(
+impl IO {
+    pub fn new() -> IO {
+        let mut window = Window::new(
             "Chip-8 emulator",
             DISPLAY_WIDTH,
             DISPLAY_HEIGHT,
@@ -29,9 +29,11 @@ impl Display {
         )
         .unwrap();
 
+        window.limit_update_rate(None);
+
         let frame_buffer = vec![vec![false; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
 
-        let mut display = Display { window };
+        let mut display = IO { window };
 
         display.refresh(&frame_buffer);
 
@@ -57,5 +59,33 @@ impl Display {
 
     pub fn should_stay_open(&self) -> bool {
         self.window.is_open() && !self.window.is_key_down(Key::Escape)
+    }
+
+    pub fn get_keys(&self) -> [bool; 16] {
+        let mut keys = [false; 16];
+
+        self.window.get_keys().iter().for_each(|key|
+            match key {
+                Key::Key1 => keys[1] = true,
+                Key::Key2 => keys[2] = true,
+                Key::Key3 => keys[3] = true,
+                Key::Key4 => keys[0xC] = true,
+                Key::Q => keys[4] = true,
+                Key::W => keys[5] = true,
+                Key::E => keys[6] = true,
+                Key::R => keys[0xD] = true,
+                Key::A => keys[7] = true,
+                Key::S => keys[8] = true,
+                Key::D => keys[9] = true,
+                Key::F => keys[0xE] = true,
+                Key::Z => keys[0xA] = true,
+                Key::X => keys[0] = true,
+                Key::C => keys[0xB] = true,
+                Key::V => keys[0xF] = true,
+                _ => {}
+            }
+        );
+
+        keys
     }
 }

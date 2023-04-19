@@ -1,6 +1,7 @@
-use crate::display::{DISPLAY_HEIGHT, DISPLAY_WIDTH};
+use crate::io::{DISPLAY_HEIGHT, DISPLAY_WIDTH};
 use crate::font::FONT;
 use rand::prelude::*;
+use std::time::{Duration, Instant};
 
 pub struct Processor {
     ram: Vec<u8>,
@@ -11,7 +12,9 @@ pub struct Processor {
     delay_timer: u8,
     sound_timer: u8,
     registers: Vec<u8>,
-    rng: ThreadRng
+    rng: ThreadRng,
+    keys: [bool; 16],
+    last_timer_update: Instant
 }
 
 impl Processor {
@@ -31,7 +34,9 @@ impl Processor {
             delay_timer: 0,
             sound_timer: 0,
             registers: vec![0u8; 16],
-            rng: thread_rng()
+            rng: thread_rng(),
+            keys: [false; 16],
+            last_timer_update: Instant::now()
         }
     }
 
@@ -41,12 +46,22 @@ impl Processor {
         }
     }
 
+    pub fn set_keys(&mut self, keys: &[bool; 16]) {
+        self.keys = *keys;
+    }
+
     pub fn step(&mut self) -> bool {
-        if self.delay_timer > 0 {
+        let mut update_timers = false;
+        if self.last_timer_update.elapsed() > Duration::from_secs_f32(1f32/60f32) {
+            update_timers = true;
+            self.last_timer_update = Instant::now();
+        }
+
+        if self.delay_timer > 0 && update_timers {
             self.delay_timer -= 1;
         }
 
-        if self.sound_timer > 0 {
+        if self.sound_timer > 0 && update_timers {
             self.sound_timer -= 1;
         }
 
@@ -119,7 +134,6 @@ impl Processor {
                 self.registers[nibbles.1 as usize] ^= self.registers[nibbles.2 as usize];
             }
             (0x8, _, _, 4) => {
-                self.registers[0xF] = 0;
                 let overflow;
 
                 (self.registers[nibbles.1 as usize], overflow) = self.registers[nibbles.1 as usize]
@@ -127,43 +141,59 @@ impl Processor {
 
                 if overflow {
                     self.registers[0xF] = 1;
+                } else {
+                    self.registers[0xF] = 0;
                 }
             }
             (0x8, _, _, 5) => {
                 let x = self.registers[nibbles.1 as usize];
                 let y = self.registers[nibbles.2 as usize];
 
+                let overflow;
+
                 if y > x {
+                    overflow = true;
+                } else {
+                    overflow = false;
+                }
+
+                self.registers[nibbles.1 as usize] = x.wrapping_sub(y);
+
+                if overflow {
                     self.registers[0xF] = 0;
                 } else {
                     self.registers[0xF] = 1;
                 }
-
-                self.registers[nibbles.1 as usize] = x.wrapping_sub(y);
             }
             (0x8, _, _, 0x7) => {
                 let x = self.registers[nibbles.1 as usize];
                 let y = self.registers[nibbles.2 as usize];
 
-                println!("{} {}", x, y);
+                let overflow;
 
                 if x > y {
+                    overflow = true;
+                } else {
+                    overflow = false;
+                }
+
+                self.registers[nibbles.1 as usize] = y.wrapping_sub(x);
+
+                if overflow {
                     self.registers[0xF] = 0;
                 } else {
                     self.registers[0xF] = 1;
                 }
-
-                self.registers[nibbles.1 as usize] = y.wrapping_sub(x);
             }
             (0x8, _, _, 0x6) => {
                 let y = self.registers[nibbles.2 as usize];
-                self.registers[0xF] = y & 1;
                 self.registers[nibbles.1 as usize] = y >> 1;
+                self.registers[0xF] = y & 1;
             }
             (0x8, _, _, 0xE) => {
                 let y = self.registers[nibbles.2 as usize];
-                self.registers[0xF] = (y >> 7) & 1;
                 self.registers[nibbles.1 as usize] = y << 1;
+                self.registers[0xF] = (y >> 7) & 1;
             }
             (0x9, _, _, 0) => {
                 if self.registers[nibbles.1 as usize] != self.registers[nibbles.2 as usize] {
@@ -200,8 +230,34 @@ impl Processor {
                     }
                 }
             }
+            (0xE, _, 0x9, 0xE) => {
+                let key = self.registers[nibbles.1 as usize] as usize;
+                if self.keys[key] {
+                    self.pc += 2;
+                }
+            }
+            (0xE, _, 0xA, 0x1) => {
+                let key = self.registers[nibbles.1 as usize] as usize;
+                if !self.keys[key] {
+                    self.pc += 2;
+                }
+            }
             (0xF, _, 0x0, 0x7) => {
                 self.registers[nibbles.1 as usize] = self.delay_timer;
+            }
+            (0xF, _, 0x0, 0xA) => {
+                let mut pressed = false;
+                for i in 0..16 {
+                    if self.keys[i] {
+                        self.registers[nibbles.1 as usize] = i as u8;
+                        pressed = true;
+                        break;
+                    }
+                }
+
+                if !pressed {
+                    self.pc -= 2;
+                }
             }
             (0xF, _, 0x1, 0x5) => {
                 self.delay_timer = self.registers[nibbles.1 as usize];
@@ -210,14 +266,15 @@ impl Processor {
                 self.sound_timer = self.registers[nibbles.1 as usize];
             }
             (0xF, _, 0x1, 0xE) => {
-                self.registers[0xF] = 0;
                 self.i += self.registers[nibbles.1 as usize] as usize;
                 if self.i >= 0x1000 {
                     self.registers[0xF] = 1;
+                } else {
+                    self.registers[0xF] = 0;
                 }
             }
             (0xF, _, 0x2, 0x9) => {
-                self.i = self.registers[nibbles.1 as usize] as usize;
+                self.i = self.registers[nibbles.1 as usize] as usize * 5;
             }
             (0xF, _, 0x3, 0x3) => {
                 let x = self.registers[nibbles.1 as usize];
