@@ -1,7 +1,8 @@
 use std::io::{self, Read, BufReader};
 use std::fs::File;
+use std::path::PathBuf;
 
-pub fn load(filename: &str) -> io::Result<Vec<u8>> {
+pub fn load(filename: &PathBuf) -> io::Result<Vec<u8>> {
     let f = File::open(filename)?;
     let mut reader = BufReader::new(f);
     let mut buffer = Vec::new();

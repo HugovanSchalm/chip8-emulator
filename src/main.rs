@@ -1,18 +1,36 @@
 use chip8_emulator::{io, processor, rom};
 use clap::Parser;
+use native_dialog::FileDialog;
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(short, long, help="The rom to run" , default_value_t = String::from("rom.ch8"))]
-    rom: String,
+    #[arg(required = false, short, long, help = "The rom to run")]
+    rom: Option<String>,
 }
 
-const INSTRUCTIONS_PER_FRAME: u32 = 20;
+const INSTRUCTIONS_PER_FRAME: u32 = 15;
 
 fn main() {
     let args = Args::parse();
-    let rom = rom::load(&args.rom).unwrap();
+
+    let rom_path;
+    if args.rom.is_none() {
+        let path = FileDialog::new()
+            .add_filter("Chip-8 Rom", &["ch8"])
+            .show_open_single_file()
+            .unwrap();
+
+        rom_path = match path {
+            Some(path) => path,
+            None => return,
+        };
+    } else {
+        rom_path = PathBuf::from(args.rom.unwrap());
+    }
+
+    let rom = rom::load(&rom_path).unwrap();
 
     let mut processor = processor::Processor::new();
 
@@ -25,6 +43,7 @@ fn main() {
 
         processor.set_keys(&io.get_keys());
         processor.update_timers();
+
         while instructions_this_frame < INSTRUCTIONS_PER_FRAME {
             vram_changed = vram_changed | processor.step();
             instructions_this_frame += 1;
@@ -33,7 +52,7 @@ fn main() {
         if vram_changed {
             io.set_framebuffer(processor.get_framebuffer());
         }
-        io.refresh();
+        io.refresh_display();
     }
 }
 

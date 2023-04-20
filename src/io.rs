@@ -42,7 +42,7 @@ impl IO {
             time_last_update: Instant::now()
         };
 
-        display.refresh();
+        display.refresh_display();
 
         display
     }
@@ -60,7 +60,7 @@ impl IO {
         }
     }
 
-    pub fn refresh(&mut self) {
+    pub fn refresh_display(&mut self) {
         self.window
             .update_with_buffer(&self.framebuffer, DISPLAY_WIDTH, DISPLAY_HEIGHT)
             .unwrap();

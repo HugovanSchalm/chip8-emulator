@@ -56,6 +56,9 @@ impl Processor {
             self.sound_timer -= 1;
         }
     }
+    pub fn get_sound_timer(&self) -> &u8 {
+        &self.sound_timer
+    }
 
     pub fn step(&mut self) -> bool {
         let mut vram_changed = false;
