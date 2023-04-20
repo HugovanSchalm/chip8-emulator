@@ -1,4 +1,5 @@
-use minifb::{Key, Window, WindowOptions, Scale};
+use minifb::{Key, Scale, Window, WindowOptions};
+use std::time::{Duration, Instant};
 
 pub const DISPLAY_WIDTH: usize = 64;
 pub const DISPLAY_HEIGHT: usize = 32;
@@ -8,6 +9,8 @@ const OFF_COLOR: u32 = 0x0; // Black
 
 pub struct IO {
     window: Window,
+    framebuffer: Vec<u32>,
+    time_last_update: Instant
 }
 
 impl IO {
@@ -31,30 +34,41 @@ impl IO {
 
         window.limit_update_rate(None);
 
-        let frame_buffer = vec![vec![false; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
+        let framebuffer = vec![OFF_COLOR; DISPLAY_HEIGHT * DISPLAY_WIDTH];
 
-        let mut display = IO { window };
+        let mut display = IO {
+            window,
+            framebuffer,
+            time_last_update: Instant::now()
+        };
 
-        display.refresh(&frame_buffer);
+        display.refresh();
 
         display
     }
 
-    pub fn refresh(&mut self, frame_buffer: &Vec<Vec<bool>>) {
-        let mut buffer: Vec<u32> = Vec::with_capacity(DISPLAY_WIDTH * DISPLAY_HEIGHT);
+    pub fn set_framebuffer(&mut self, frame_buffer: &Vec<Vec<bool>>) {
+        self.framebuffer = Vec::with_capacity(DISPLAY_WIDTH * DISPLAY_HEIGHT);
         for y in 0..frame_buffer.len() {
             for x in 0..frame_buffer[y].len() {
                 if frame_buffer[y][x] {
-                    buffer.push(ON_COLOR);
+                    self.framebuffer.push(ON_COLOR);
                 } else {
-                    buffer.push(OFF_COLOR);
+                    self.framebuffer.push(OFF_COLOR);
                 }
             }
         }
+    }
 
+    pub fn refresh(&mut self) {
         self.window
-            .update_with_buffer(&buffer, DISPLAY_WIDTH, DISPLAY_HEIGHT)
+            .update_with_buffer(&self.framebuffer, DISPLAY_WIDTH, DISPLAY_HEIGHT)
             .unwrap();
+        self.time_last_update = Instant::now();
+    }
+
+    pub fn get_time_since_last_update(&self) -> Duration {
+        self.time_last_update.elapsed()
     }
 
     pub fn should_stay_open(&self) -> bool {
@@ -64,27 +78,25 @@ impl IO {
     pub fn get_keys(&self) -> [bool; 16] {
         let mut keys = [false; 16];
 
-        self.window.get_keys().iter().for_each(|key|
-            match key {
-                Key::Key1 => keys[1] = true,
-                Key::Key2 => keys[2] = true,
-                Key::Key3 => keys[3] = true,
-                Key::Key4 => keys[0xC] = true,
-                Key::Q => keys[4] = true,
-                Key::W => keys[5] = true,
-                Key::E => keys[6] = true,
-                Key::R => keys[0xD] = true,
-                Key::A => keys[7] = true,
-                Key::S => keys[8] = true,
-                Key::D => keys[9] = true,
-                Key::F => keys[0xE] = true,
-                Key::Z => keys[0xA] = true,
-                Key::X => keys[0] = true,
-                Key::C => keys[0xB] = true,
-                Key::V => keys[0xF] = true,
-                _ => {}
-            }
-        );
+        self.window.get_keys().iter().for_each(|key| match key {
+            Key::Key1 => keys[1] = true,
+            Key::Key2 => keys[2] = true,
+            Key::Key3 => keys[3] = true,
+            Key::Key4 => keys[0xC] = true,
+            Key::Q => keys[4] = true,
+            Key::W => keys[5] = true,
+            Key::E => keys[6] = true,
+            Key::R => keys[0xD] = true,
+            Key::A => keys[7] = true,
+            Key::S => keys[8] = true,
+            Key::D => keys[9] = true,
+            Key::F => keys[0xE] = true,
+            Key::Z => keys[0xA] = true,
+            Key::X => keys[0] = true,
+            Key::C => keys[0xB] = true,
+            Key::V => keys[0xF] = true,
+            _ => {}
+        });
 
         keys
     }

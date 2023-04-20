@@ -229,6 +229,7 @@ impl Processor {
                         self.framebuffer[y][x] ^= val;
                     }
                 }
+                vram_changed = true;
             }
             (0xE, _, 0x9, 0xE) => {
                 let key = self.registers[nibbles.1 as usize] as usize;

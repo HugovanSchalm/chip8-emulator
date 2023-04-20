@@ -1,6 +1,5 @@
 use chip8_emulator::{rom, processor, io};
 use clap::Parser;
-use std::thread;
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -9,6 +8,9 @@ struct Args {
     #[arg(short, long, help="The rom to run" , default_value_t = String::from("rom.ch8"))]
     rom: String,
 }
+
+const INSTRUCTIONS_PER_FRAME: u32 = 10;
+const DURATION_PER_FRAME: Duration = Duration::from_micros(16600);
 
 fn main() {
     let args = Args::parse();
@@ -20,9 +22,23 @@ fn main() {
     let mut io = io::IO::new();
 
     while io.should_stay_open() {
+        let mut instructions_this_frame = 0;
+        let mut vram_changed = false;
+        
         processor.set_keys(&io.get_keys());
-        processor.step();
-        io.refresh(processor.get_framebuffer());
-        thread::sleep(Duration::from_secs_f64(1f64/1000f64));
+
+        while io.get_time_since_last_update() < DURATION_PER_FRAME {
+            while instructions_this_frame < INSTRUCTIONS_PER_FRAME {
+                vram_changed = vram_changed | processor.step();
+                instructions_this_frame += 1;
+            }
+        }
+
+        if vram_changed{
+            io.set_framebuffer(processor.get_framebuffer());
+        }
+        io.refresh();
     }
 }
+
+//4A10
