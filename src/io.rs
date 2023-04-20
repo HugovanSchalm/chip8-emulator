@@ -32,7 +32,7 @@ impl IO {
         )
         .unwrap();
 
-        window.limit_update_rate(None);
+        window.limit_update_rate(Some(Duration::from_secs_f64(1f64/60f64))); //
 
         let framebuffer = vec![OFF_COLOR; DISPLAY_HEIGHT * DISPLAY_WIDTH];
 
