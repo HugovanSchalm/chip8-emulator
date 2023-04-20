@@ -26,6 +26,7 @@ fn main() {
         let mut vram_changed = false;
         
         processor.set_keys(&io.get_keys());
+        processor.update_timers();
 
         while io.get_time_since_last_update() < DURATION_PER_FRAME {
             while instructions_this_frame < INSTRUCTIONS_PER_FRAME {

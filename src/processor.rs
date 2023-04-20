@@ -1,7 +1,6 @@
 use crate::io::{DISPLAY_HEIGHT, DISPLAY_WIDTH};
 use crate::font::FONT;
 use rand::prelude::*;
-use std::time::{Duration, Instant};
 
 pub struct Processor {
     ram: Vec<u8>,
@@ -14,7 +13,6 @@ pub struct Processor {
     registers: Vec<u8>,
     rng: ThreadRng,
     keys: [bool; 16],
-    last_timer_update: Instant
 }
 
 impl Processor {
@@ -36,7 +34,6 @@ impl Processor {
             registers: vec![0u8; 16],
             rng: thread_rng(),
             keys: [false; 16],
-            last_timer_update: Instant::now()
         }
     }
 
@@ -50,21 +47,17 @@ impl Processor {
         self.keys = *keys;
     }
 
-    pub fn step(&mut self) -> bool {
-        let mut update_timers = false;
-        if self.last_timer_update.elapsed() > Duration::from_secs_f32(1f32/60f32) {
-            update_timers = true;
-            self.last_timer_update = Instant::now();
-        }
-
-        if self.delay_timer > 0 && update_timers {
+    pub fn update_timers(&mut self) {
+        if self.delay_timer > 0 {
             self.delay_timer -= 1;
         }
 
-        if self.sound_timer > 0 && update_timers {
+        if self.sound_timer > 0 {
             self.sound_timer -= 1;
         }
+    }
 
+    pub fn step(&mut self) -> bool {
         let mut vram_changed = false;
 
         // Fetch instruction
