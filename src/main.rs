@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use chip8_emulator::{io, processor::{self, Processor}, rom};
+use chip8_emulator::{io, rom, processor};
 use clap::Parser;
 use native_dialog::FileDialog;
 use std::path::PathBuf;

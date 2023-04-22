@@ -47,7 +47,7 @@ impl IO {
         let mut options_menu = Menu::new("Options").unwrap();
 
         let mut mode_menu = Menu::new("Mode").unwrap();
-        mode_menu.add_item("Chip-8", MENU_MODE_CHIP8_ID).build();
+        mode_menu.add_item("Chip-8", MENU_MODE_CHIP8_ID).enabled(false).build();
         mode_menu
             .add_item("SUPER-CHIP", MENU_MODE_SUPERCHIP_ID)
             .build();
