@@ -1,4 +1,4 @@
-use minifb::{Key, Menu, Scale, Window, WindowOptions};
+use minifb::{Key, Menu, Scale, Window, WindowOptions, MENU_KEY_CTRL};
 use std::time::Duration;
 
 pub const DISPLAY_WIDTH: usize = 64;
@@ -14,11 +14,17 @@ pub const MENU_COLOR_MATRIX_ID: usize = 5;
 pub const MENU_COLOR_NEON_ID: usize = 6;
 pub const MENU_COLOR_OLDSCHOOL_ID: usize = 7;
 
+pub enum MenuAction {
+    OpenFile,
+    Reset,
+}
+
 pub struct IO {
     window: Window,
     framebuffer: Vec<Vec<bool>>,
     on_color: u32,
     off_color: u32,
+    current_menu_action: Option<MenuAction>,
 }
 
 impl IO {
@@ -41,13 +47,16 @@ impl IO {
         .unwrap();
 
         let mut file_menu = Menu::new("File").unwrap();
-        file_menu.add_item("Open", MENU_OPEN_FILE_ID).build();
-        file_menu.add_item("Reset", MENU_RESET_ID).build();
+        file_menu.add_item("Open", MENU_OPEN_FILE_ID).shortcut(Key::O, MENU_KEY_CTRL).build();
+        file_menu.add_item("Reset", MENU_RESET_ID).shortcut(Key::R, MENU_KEY_CTRL).build();
 
         let mut options_menu = Menu::new("Options").unwrap();
 
         let mut mode_menu = Menu::new("Mode").unwrap();
-        mode_menu.add_item("Chip-8", MENU_MODE_CHIP8_ID).enabled(false).build();
+        mode_menu
+            .add_item("Chip-8", MENU_MODE_CHIP8_ID)
+            .enabled(false)
+            .build();
         mode_menu
             .add_item("SUPER-CHIP", MENU_MODE_SUPERCHIP_ID)
             .build();
@@ -56,7 +65,9 @@ impl IO {
         let mut color_menu = Menu::new("Colors").unwrap();
         color_menu.add_item("Matrix", MENU_COLOR_MATRIX_ID).build();
         color_menu.add_item("Neon", MENU_COLOR_NEON_ID).build();
-        color_menu.add_item("Old School", MENU_COLOR_OLDSCHOOL_ID).build();
+        color_menu
+            .add_item("Old School", MENU_COLOR_OLDSCHOOL_ID)
+            .build();
 
         options_menu.add_sub_menu("Mode", &mode_menu);
         options_menu.add_sub_menu("Colors", &color_menu);
@@ -76,6 +87,7 @@ impl IO {
             framebuffer,
             on_color,
             off_color,
+            current_menu_action: None,
         };
 
         display.refresh_display();
@@ -94,20 +106,31 @@ impl IO {
     fn handle_menus(&mut self) {
         if let Some(menu_id) = self.window.is_menu_pressed() {
             match menu_id {
+                MENU_OPEN_FILE_ID => {
+                    self.current_menu_action = Some(MenuAction::OpenFile);
+                }
+                MENU_RESET_ID => {
+                    self.current_menu_action = Some(MenuAction::Reset);
+                }
                 MENU_COLOR_MATRIX_ID => {
                     self.on_color = 0x00FF00; // Green
                     self.off_color = 0x0; // Black
+                    self.current_menu_action = None;
                 }
                 MENU_COLOR_NEON_ID => {
                     self.on_color = 0x00FFEC;
                     self.off_color = 0xD600FF;
+                    self.current_menu_action = None;
                 }
                 MENU_COLOR_OLDSCHOOL_ID => {
                     self.on_color = 0xF0F6F0;
                     self.off_color = 0x222323;
+                    self.current_menu_action = None;
                 }
-                _ => {}
+                _ => self.current_menu_action = None,
             }
+        } else {
+            self.current_menu_action = None;
         }
     }
 
@@ -131,6 +154,10 @@ impl IO {
 
     pub fn should_stay_open(&self) -> bool {
         self.window.is_open() && !self.window.is_key_down(Key::Escape)
+    }
+
+    pub fn get_current_menu_action(&self) -> &Option<MenuAction> {
+        &self.current_menu_action
     }
 
     pub fn get_keys(&self) -> [bool; 16] {
