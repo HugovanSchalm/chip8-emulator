@@ -1,42 +1,14 @@
 #![windows_subsystem = "windows"]
 
-use chip8_emulator::{io, rom, processor};
-use clap::Parser;
+use chip8_emulator::{io, rom, processor::{self, Processor}, splash};
 use native_dialog::FileDialog;
-use std::path::PathBuf;
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(required = false, short, long, help = "The rom to run")]
-    rom: Option<String>,
-}
 
 const INSTRUCTIONS_PER_FRAME: u32 = 10;
 
 fn main() {
-    let args = Args::parse();
-
-    let rom_path;
-    if args.rom.is_none() {
-        let path = FileDialog::new()
-            .add_filter("Chip-8 Rom", &["ch8"])
-            .show_open_single_file()
-            .unwrap();
-
-        rom_path = match path {
-            Some(path) => path,
-            None => return,
-        };
-    } else {
-        rom_path = PathBuf::from(args.rom.unwrap());
-    }
-
-    let rom = rom::load(&rom_path).unwrap();
-
     let mut processor = processor::Processor::new();
 
-    processor.load_data(&rom);
+    processor.load_data(&splash::SPLASH);
 
     let mut io = io::IO::new();
 
@@ -57,6 +29,23 @@ fn main() {
         }
         io.refresh_display();
     }
+}
+
+fn load_rom(processor: &mut Processor) {
+
+    let path = FileDialog::new()
+    .add_filter("Chip-8 Rom", &["ch8"])
+    .show_open_single_file()
+    .unwrap();
+
+    let rom_path = match path {
+        Some(path) => path,
+        None => return,
+    };
+
+    let rom = rom::load(&rom_path).unwrap();
+
+    processor.load_data(&rom);
 }
 
 //4A10
