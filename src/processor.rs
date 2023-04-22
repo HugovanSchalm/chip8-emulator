@@ -1,5 +1,6 @@
 use crate::io::{DISPLAY_HEIGHT, DISPLAY_WIDTH};
 use crate::font::FONT;
+use crate::splash::SPLASH;
 use rand::prelude::*;
 
 pub struct Processor {
@@ -21,6 +22,10 @@ impl Processor {
 
         for i in 0..FONT.len() {
             ram[i] = FONT[i];
+        }
+
+        for i in 0..SPLASH.len() {
+            ram[i+80] = SPLASH[i];
         }
 
         Processor {
@@ -56,8 +61,19 @@ impl Processor {
             self.sound_timer -= 1;
         }
     }
+
     pub fn get_sound_timer(&self) -> &u8 {
         &self.sound_timer
+    }
+
+    pub fn reset(&mut self) {
+        self.framebuffer = vec![vec![false; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
+        self.pc = 0x200;
+        self.i = 0;
+        self.stack = Vec::new();
+        self.delay_timer = 0;
+        self.sound_timer = 0;
+        self.registers = vec![0u8; 16];
     }
 
     pub fn step(&mut self) -> bool {
@@ -286,11 +302,13 @@ impl Processor {
                 for offset in 0..=nibbles.1 as usize {
                     self.ram[self.i + offset] = self.registers[offset];
                 }
+                self.i += nibbles.1 as usize + 1;
             }
             (0xF, _, 0x6, 0x5) => {
                 for offset in 0..=nibbles.1 as usize {
                     self.registers[offset] = self.ram[self.i + offset];
                 }
+                self.i += nibbles.1 as usize + 1;
             }
             _ => {}
         }

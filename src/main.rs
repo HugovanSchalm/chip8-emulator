@@ -1,4 +1,6 @@
-use chip8_emulator::{io, processor, rom};
+#![windows_subsystem = "windows"]
+
+use chip8_emulator::{io, processor::{self, Processor}, rom};
 use clap::Parser;
 use native_dialog::FileDialog;
 use std::path::PathBuf;
@@ -10,7 +12,7 @@ struct Args {
     rom: Option<String>,
 }
 
-const INSTRUCTIONS_PER_FRAME: u32 = 15;
+const INSTRUCTIONS_PER_FRAME: u32 = 10;
 
 fn main() {
     let args = Args::parse();
@@ -35,6 +37,7 @@ fn main() {
     let mut processor = processor::Processor::new();
 
     processor.load_data(&rom);
+
     let mut io = io::IO::new();
 
     while io.should_stay_open() {
