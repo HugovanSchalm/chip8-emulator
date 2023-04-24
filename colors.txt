@@ -1,0 +1,6 @@
+Matrix 0xFF00 0x0
+Neon 0xFFEC 0xD600FF
+Chill 0xF0F6F0 0x222323
+GameBoy 97bfa4 18232e
+Pixel_Ink edf6d6 3e232c
+Black_and_White FFFFFF 0

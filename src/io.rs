@@ -1,4 +1,5 @@
 use minifb::{Key, Menu, Scale, Window, WindowOptions, MENU_KEY_CTRL};
+use crate::config::Palette;
 use std::time::Duration;
 
 pub const DISPLAY_WIDTH: usize = 64;
@@ -6,6 +7,8 @@ pub const DISPLAY_HEIGHT: usize = 32;
 
 pub const MENU_OPEN_FILE_ID: usize = 0;
 pub const MENU_RESET_ID: usize = 1;
+
+const MENU_COLOR_BASE_ID: usize = 5;
 
 pub const MENU_MODE_CHIP8_ID: usize = 2;
 pub const MENU_MODE_SUPERCHIP_ID: usize = 3;
@@ -17,6 +20,7 @@ pub const MENU_COLOR_OLDSCHOOL_ID: usize = 7;
 pub enum MenuAction {
     OpenFile,
     Reset,
+    SetColors(u32, u32),
 }
 
 pub struct IO {
@@ -25,10 +29,11 @@ pub struct IO {
     on_color: u32,
     off_color: u32,
     current_menu_action: Option<MenuAction>,
+    pallettes: Vec<Palette>
 }
 
 impl IO {
-    pub fn new() -> IO {
+    pub fn new(on_color: u32, off_color: u32, pallettes: &Vec<Palette>) -> IO {
         let mut window = Window::new(
             "Chip-8 emulator",
             DISPLAY_WIDTH,
@@ -46,41 +51,21 @@ impl IO {
         )
         .unwrap();
 
-        let mut file_menu = Menu::new("File").unwrap();
-        file_menu.add_item("Open", MENU_OPEN_FILE_ID).shortcut(Key::O, MENU_KEY_CTRL).build();
-        file_menu.add_item("Reset", MENU_RESET_ID).shortcut(Key::R, MENU_KEY_CTRL).build();
+        let menus = Self::create_menus(pallettes);
 
-        let mut options_menu = Menu::new("Options").unwrap();
-
-        let mut mode_menu = Menu::new("Mode").unwrap();
-        mode_menu
-            .add_item("Chip-8", MENU_MODE_CHIP8_ID)
-            .enabled(false)
-            .build();
-        mode_menu
-            .add_item("SUPER-CHIP", MENU_MODE_SUPERCHIP_ID)
-            .build();
-        mode_menu.add_item("XO-CHIP", MENU_MODE_XOCHIP_ID).build();
-
-        let mut color_menu = Menu::new("Colors").unwrap();
-        color_menu.add_item("Matrix", MENU_COLOR_MATRIX_ID).build();
-        color_menu.add_item("Neon", MENU_COLOR_NEON_ID).build();
-        color_menu
-            .add_item("Old School", MENU_COLOR_OLDSCHOOL_ID)
-            .build();
-
-        options_menu.add_sub_menu("Mode", &mode_menu);
-        options_menu.add_sub_menu("Colors", &color_menu);
-
-        window.add_menu(&file_menu);
-        window.add_menu(&options_menu);
+        for menu in menus.iter() {
+            window.add_menu(menu);
+        }
 
         window.limit_update_rate(Some(Duration::from_secs_f64(1f64 / 60f64))); //
 
         let framebuffer = vec![vec![false; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
 
-        let on_color: u32 = 0x00FF00; // Green
-        let off_color: u32 = 0x0; // Black
+        window.set_background_color(
+            off_color as usize >> 16,
+            (off_color as usize >> 8) & 0xFF,
+            off_color as usize & 0xFF,
+        );
 
         let mut display = IO {
             window,
@@ -88,6 +73,7 @@ impl IO {
             on_color,
             off_color,
             current_menu_action: None,
+            pallettes: pallettes.clone()
         };
 
         display.refresh_display();
@@ -103,35 +89,14 @@ impl IO {
         }
     }
 
-    fn handle_menus(&mut self) {
-        if let Some(menu_id) = self.window.is_menu_pressed() {
-            match menu_id {
-                MENU_OPEN_FILE_ID => {
-                    self.current_menu_action = Some(MenuAction::OpenFile);
-                }
-                MENU_RESET_ID => {
-                    self.current_menu_action = Some(MenuAction::Reset);
-                }
-                MENU_COLOR_MATRIX_ID => {
-                    self.on_color = 0x00FF00; // Green
-                    self.off_color = 0x0; // Black
-                    self.current_menu_action = None;
-                }
-                MENU_COLOR_NEON_ID => {
-                    self.on_color = 0x00FFEC;
-                    self.off_color = 0xD600FF;
-                    self.current_menu_action = None;
-                }
-                MENU_COLOR_OLDSCHOOL_ID => {
-                    self.on_color = 0xF0F6F0;
-                    self.off_color = 0x222323;
-                    self.current_menu_action = None;
-                }
-                _ => self.current_menu_action = None,
-            }
-        } else {
-            self.current_menu_action = None;
-        }
+    fn set_colors(&mut self, on_color: u32, off_color: u32) {
+        self.on_color = on_color;
+        self.off_color = off_color;
+        self.window.set_background_color(
+            off_color as usize >> 16,
+            (off_color as usize >> 8) & 0xFF,
+            off_color as usize & 0xFF,
+        );
     }
 
     pub fn refresh_display(&mut self) {
@@ -184,5 +149,66 @@ impl IO {
         });
 
         keys
+    }
+
+    fn create_menus(pallettes: &Vec<Palette>) -> Vec<Menu> {
+        let mut file_menu = Menu::new("File").unwrap();
+        file_menu
+            .add_item("Open", MENU_OPEN_FILE_ID)
+            .shortcut(Key::O, MENU_KEY_CTRL)
+            .build();
+        file_menu
+            .add_item("Reset", MENU_RESET_ID)
+            .shortcut(Key::R, MENU_KEY_CTRL)
+            .build();
+
+        let mut options_menu = Menu::new("Options").unwrap();
+
+        let mut mode_menu = Menu::new("Mode").unwrap();
+        mode_menu
+            .add_item("Chip-8", MENU_MODE_CHIP8_ID)
+            .enabled(false)
+            .build();
+        mode_menu
+            .add_item("SUPER-CHIP", MENU_MODE_SUPERCHIP_ID)
+            .build();
+        mode_menu.add_item("XO-CHIP", MENU_MODE_XOCHIP_ID).build();
+
+        let mut color_menu = Menu::new("Colors").unwrap();
+
+        for (i, pallette) in pallettes.iter().enumerate() {
+            color_menu.add_item(&pallette.get_name().replace("_", " "), MENU_COLOR_BASE_ID + i).build();
+        }
+
+        options_menu.add_sub_menu("Mode", &mode_menu);
+        options_menu.add_sub_menu("Colors", &color_menu);
+
+        vec![file_menu, options_menu]
+    }
+
+    fn handle_menus(&mut self) {
+        if let Some(menu_id) = self.window.is_menu_pressed() {
+            match menu_id {
+                MENU_OPEN_FILE_ID => {
+                    self.current_menu_action = Some(MenuAction::OpenFile);
+                }
+                MENU_RESET_ID => {
+                    self.current_menu_action = Some(MenuAction::Reset);
+                }
+                MENU_COLOR_BASE_ID.. => {
+                    let index = menu_id - MENU_COLOR_BASE_ID;
+                    if index >= self.pallettes.len() {
+                        self.current_menu_action = None;
+                        return;
+                    }
+                    let (on_color, off_color) = self.pallettes[index].get_colors();
+                    self.set_colors(on_color, off_color);
+                    self.current_menu_action = Some(MenuAction::SetColors(on_color, off_color));
+                }
+                _ => {}
+            }
+        } else {
+            self.current_menu_action = None;
+        }
     }
 }
