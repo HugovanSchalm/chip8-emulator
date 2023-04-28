@@ -17,6 +17,9 @@ Cargo.lock
 
 /roms
 
+#config
+*.ini 
+*.txt
 
 # Added by cargo
 

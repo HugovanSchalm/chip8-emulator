@@ -138,12 +138,15 @@ impl Processor {
             }
             (0x8, _, _, 1) => {
                 self.registers[nibbles.1 as usize] |= self.registers[nibbles.2 as usize];
+                self.registers[0xF] = 0;
             }
             (0x8, _, _, 2) => {
                 self.registers[nibbles.1 as usize] &= self.registers[nibbles.2 as usize];
+                self.registers[0xF] = 0;
             }
             (0x8, _, _, 3) => {
                 self.registers[nibbles.1 as usize] ^= self.registers[nibbles.2 as usize];
+                self.registers[0xF] = 0;
             }
             (0x8, _, _, 4) => {
                 let overflow;
@@ -226,11 +229,14 @@ impl Processor {
 
                 let x_reg = nibbles.1 as usize;
                 let y_reg = nibbles.2 as usize;
+                let mut y = (self.registers[y_reg] as usize) % DISPLAY_HEIGHT;
 
                 for byte in 0..nibbles.3 as usize {
-                    let y = (self.registers[y_reg] as usize + byte) % DISPLAY_HEIGHT;
+                    if y >= self.framebuffer.len() {
+                        break;
+                    }
+                    let mut x = (self.registers[x_reg] as usize) % DISPLAY_WIDTH;
                     for bit in 0..8 {
-                        let x = (self.registers[x_reg] as usize + bit) % DISPLAY_WIDTH;
                         if x >= self.framebuffer[y].len() {
                             break;
                         }
@@ -239,7 +245,9 @@ impl Processor {
                             self.registers[0xF] = 1;
                         }
                         self.framebuffer[y][x] ^= val;
+                        x += 1;
                     }
+                    y += 1;
                 }
                 vram_changed = true;
             }

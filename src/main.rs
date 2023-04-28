@@ -3,7 +3,7 @@
 use chip8_emulator::{io::{self, MenuAction::OpenFile, MenuAction::Reset, MenuAction::SetColors}, rom, processor::{self, Processor}, splash, config};
 use native_dialog::FileDialog;
 
-const INSTRUCTIONS_PER_FRAME: u32 = 10;
+const INSTRUCTIONS_PER_FRAME: u32 = 15;
 
 fn main() {
     let mut config = config::Config::build().unwrap();
@@ -36,7 +36,7 @@ fn main() {
         processor.set_keys(&io.get_keys());
         processor.update_timers();
 
-        while instructions_this_frame < INSTRUCTIONS_PER_FRAME {
+        while instructions_this_frame < INSTRUCTIONS_PER_FRAME && !vram_changed {
             vram_changed = vram_changed | processor.step();
             instructions_this_frame += 1;
         }
@@ -54,13 +54,15 @@ fn load_rom(processor: &mut Processor) {
     .add_filter("Chip-8 Rom", &["ch8"])
     .show_open_single_file()
     .unwrap();
-
+    
     let rom_path = match path {
         Some(path) => path,
         None => return,
     };
 
     let rom = rom::load(&rom_path).unwrap();
+
+    println!("{}", rom_path.file_name().unwrap().to_str().unwrap());
 
     processor.load_data(&rom);
     processor.reset();
